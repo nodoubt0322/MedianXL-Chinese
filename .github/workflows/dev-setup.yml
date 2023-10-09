@@ -1,0 +1,53 @@
+name: Dev Setup
+
+on:
+  create:
+    branches:
+      - "dev-*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    environment: build
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Branch name
+        id: vars
+        run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+
+      - name: Setup
+        shell: cmd
+        run: move tools\MPQEditor.ini %APPDATA%
+
+      - name: Pull
+        run: bash pull.sh
+
+      - name: Unpack
+        run: bash unpack.sh
+
+      - name: Prepare
+        run: bash unpack.sh
+
+      - name: Diff
+        run: bash diff.sh && cat output.txt
+
+      - name: Commit
+        run: |
+          git config --local user.email "github-actions[bot]@github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Prepare for ${{ steps.vars.outputs.short_ref }}"
+
+      - name: Push
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.vars.outputs.short_ref }}
